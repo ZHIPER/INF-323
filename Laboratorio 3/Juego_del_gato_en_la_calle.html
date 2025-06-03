@@ -1,0 +1,1772 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>LABORATORIO 3</title>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+</head>
+   <body>
+      <h2></h2>
+      <canvas id="webglcanvas" style="border: none;" width="500" height="500"></canvas>
+      <noscript><p><b>Lo siento, pero ésta página requiere JavaScript.</b></p></noscript>
+      <div id="sound"></div>
+      <!--
+        /***************************************************************************/
+        /* Se definen los códigos shaders.                                         */
+        /***************************************************************************/
+      -->
+      <script id="vs" type="vertex">
+        #version 300 es
+        uniform mat4 uMatrizProyeccion;
+        uniform mat4 uMatrizVista;
+        uniform mat4 uMatrizModelo;
+        layout(location = 0) in vec2 aVertices;
+        void main() {
+          gl_Position = uMatrizProyeccion * uMatrizVista * uMatrizModelo * vec4(aVertices, 0.0, 1.0);
+        }
+      </script>
+
+      <script id="fs" type="fragment">
+        #version 300 es
+        precision highp float;
+        uniform vec4 uColor;
+        out vec4 color;
+        void main() {
+            color = uColor;
+        }
+      </script>
+	
+      <script>
+        "use strict";
+
+        /* Variables globales */
+        var canvas;
+        var programaID;
+        var gl;
+        //CAMARA
+        var mov_1=0;
+        //NIVELES
+        var nivel=1;
+        //ESCENA
+        var pista;
+        var p;
+        //PERSONAJE
+        var circulo1;
+        var c1;
+        var sw=1;
+        var opgato=0.0;
+        //CARA_GATO
+        var caragato;
+        var cg;
+        var cuerpogato;
+        var cug;
+        var colagato;
+        var cog;
+
+       var ophitbox=0.0;
+       //FILA_1_AUTOS
+       //HITBOX
+       var vel_x_fila1 = -0.03;
+       var rectangulo1;
+       var r1;
+       //GRAFICO
+       var auto1_iz;
+       var a1_iz;
+       var auto1_der;
+       var a1_der;
+       var ruedas1_1;
+       var ru1_1;
+       var ruedas1_2;
+       var ru1_2;
+
+       //FILA_2_AUTOS
+       //HITBOX
+       var vel_x_fila2 = 0.01;
+       var rectangulo2;
+       var rectangulo3;
+       var rectangulo4;
+       var rectangulo5;
+       var rectangulo6;
+       var r2;
+       var r3;
+       var r4;
+       var r5;
+       var r6;
+       //GRAFICO
+       var auto2_der;var a2_der;
+       var auto3_der;var a3_der;
+       var auto4_der;var a4_der;
+       var auto5_der;var a5_der;
+       var auto6_der;var a6_der;
+       var ruedas2_1;var ru2_1; var ruedas2_2;var ru2_2;
+       var ruedas3_1;var ru3_1; var ruedas3_2;var ru3_2;
+       var ruedas4_1;var ru4_1; var ruedas4_2;var ru4_2;
+       var ruedas5_1;var ru5_1; var ruedas5_2;var ru5_2;
+       var ruedas6_1;var ru6_1; var ruedas6_2;var ru6_2;
+       //FILA_3_AUTOS
+       //HITBOX
+       var vel_x_fila3 = -0.01;
+       var rectangulo7;
+       var rectangulo8;
+       var rectangulo9;
+       var r7;
+       var r8;
+       var r9;
+       //GRAFICO
+       var auto7_iz;var a7_iz;
+       var auto8_iz;var a8_iz;
+       var auto9_iz;var a9_iz;
+       var ruedas7_1;var ru7_1; var ruedas7_2;var ru7_2;
+       var ruedas8_1;var ru8_1; var ruedas8_2;var ru8_2;
+       var ruedas9_1;var ru9_1; var ruedas9_2;var ru9_2;
+
+       //FILA_4_AUTOS
+       //HITBOX
+       var vel_x_fila4 = -0.02;
+       var rectangulo10;var r10;
+       var rectangulo11;var r11;
+       //GRAFICO
+       var auto10_iz ;var a10_iz;
+       var auto11_iz ;var a11_iz;
+       var ruedas10_1;var ru10_1;  var ruedas10_2;var ru10_2;
+       var ruedas11_1;var ru11_1;  var ruedas11_2;var ru11_2;
+        /* Variables Uniformes */
+        var uColor;
+        var uMatrizProyeccion;
+        var uMatrizVista;
+        var uMatrizModelo;
+
+        /* Matrices */
+        var MatrizProyeccion = new Array(16);
+        var MatrizVista = new Array(16);
+        var MatrizModelo = new Array(16);
+
+        /***************************************************************************/
+        /* Se crean, compilan y enlazan los programas Shader                       */
+        /***************************************************************************/
+        function compilaEnlazaLosShaders() {
+
+          /* Se compila el shader de vertice */
+          var shaderDeVertice = gl.createShader(gl.VERTEX_SHADER);
+          gl.shaderSource(shaderDeVertice, document.getElementById("vs").text.trim());
+          gl.compileShader(shaderDeVertice);
+          if (!gl.getShaderParameter(shaderDeVertice, gl.COMPILE_STATUS)) {
+             console.error(gl.getShaderInfoLog(shaderDeVertice));
+          }
+
+          /* Se compila el shader de fragmento */
+          var shaderDeFragmento = gl.createShader(gl.FRAGMENT_SHADER);
+          gl.shaderSource(shaderDeFragmento, document.getElementById("fs").text.trim());
+          gl.compileShader(shaderDeFragmento);
+          if (!gl.getShaderParameter(shaderDeFragmento, gl.COMPILE_STATUS)) {
+             console.error(gl.getShaderInfoLog(shaderDeFragmento));
+          }
+
+          /* Se enlaza ambos shader */
+          programaID = gl.createProgram();
+          gl.attachShader(programaID, shaderDeVertice); 
+          gl.attachShader(programaID, shaderDeFragmento);
+          gl.linkProgram(programaID);
+          if (!gl.getProgramParameter(programaID, gl.LINK_STATUS)) {
+             console.error(gl.getProgramInfoLog(programaID));
+          }
+
+          /* Se instala el programa de shaders para utilizarlo */
+          gl.useProgram(programaID);
+        }
+
+        /***************************************************************************/
+        /* Transformación de las Matrices                                          */
+        /***************************************************************************/
+
+        /* Convierte de grados a radianes */
+        function toRadians(grados) {
+          return grados * Math.PI / 180;
+        };
+
+        /* Matriz Identidad */
+        function identidad(r) {
+          r[0] = 1; r[4] = 0; r[ 8] = 0; r[12] = 0;
+          r[1] = 0; r[5] = 1; r[ 9] = 0; r[13] = 0;
+          r[2] = 0; r[6] = 0; r[10] = 1; r[14] = 0;
+          r[3] = 0; r[7] = 0; r[11] = 0; r[15] = 1;
+        }
+
+        /* Traslación - glTranslatef */
+        function traslacion(matriz, tx, ty, tz) {
+          var r = new Array(16);
+          r[0] = 1; r[4] = 0; r[ 8] = 0; r[12] = tx;
+          r[1] = 0; r[5] = 1; r[ 9] = 0; r[13] = ty;
+          r[2] = 0; r[6] = 0; r[10] = 1; r[14] = tz;
+          r[3] = 0; r[7] = 0; r[11] = 0; r[15] =  1;
+          multiplica(matriz, matriz, r);
+        }
+
+        /* Escalación - glScalef */
+        function escalacion(matriz, sx, sy, sz) { 
+          var r = new Array(16);
+          r[0] = sx; r[4] =  0; r[ 8] =  0; r[12] =  0;
+          r[1] =  0; r[5] = sy; r[ 9] =  0; r[13] =  0;
+          r[2] =  0; r[6] =  0; r[10] = sz; r[14] =  0;
+          r[3] =  0; r[7] =  0; r[11] =  0; r[15] =  1;
+          multiplica(matriz, matriz, r);
+        }
+
+        /* Rotación sobre X - glRotatef */
+        function rotacionX(matriz, theta){
+          let r = new Array(16);
+          var c = Math.cos(toRadians(theta));
+          var s = Math.sin(toRadians(theta));
+          r[0] =  1; r[4] =  0; r[ 8] =  0; r[12] = 0;
+          r[1] =  0; r[5] =  c; r[ 9] = -s; r[13] = 0;
+          r[2] =  0; r[6] =  s; r[10] =  c; r[14] = 0;
+          r[3] =  0; r[7] =  0; r[11] =  0; r[15] = 1;
+          multiplica(matriz, matriz, r); 
+        }
+
+        /* Rotación sobre Y - glRotatef */
+        function rotacionY(matriz, theta){
+          let r = new Array(16);
+          var c = Math.cos(toRadians(theta));
+          var s = Math.sin(toRadians(theta));
+          r[0] =  c; r[4] =  0; r[ 8] =  s; r[12] = 0;
+          r[1] =  0; r[5] =  1; r[ 9] =  0; r[13] = 0;
+          r[2] = -s; r[6] =  0; r[10] =  c; r[14] = 0;
+          r[3] =  0; r[7] =  0; r[11] =  0; r[15] = 1;
+          multiplica(matriz, matriz, r);
+        }
+	
+        /* Rotación sobre Z - glRotatef */
+        function rotacionZ(matriz, theta){
+          let r = new Array(16);
+          var c = Math.cos(toRadians(theta));
+          var s = Math.sin(toRadians(theta));
+          r[0] =  c; r[4] = -s; r[ 8] =  0; r[12] = 0;
+          r[1] =  s; r[5] =  c; r[ 9] =  0; r[13] = 0;
+          r[2] =  0; r[6] =  0; r[10] =  1; r[14] = 0;
+          r[3] =  0; r[7] =  0; r[11] =  0; r[15] = 1;
+          multiplica(matriz, matriz, r);
+        }
+
+        /* Proyección Paralela - glOrtho */
+        function ortho(r, izq, der, abj, arr, cerca, lejos) {
+          r[0] = 2/(der - izq); r[4] =             0; r[ 8] =                  0; r[12] =         -(der + izq)/(der - izq);
+          r[1] =             0; r[5] = 2/(arr - abj); r[ 9] =                  0; r[13] =         -(arr + abj)/(arr - abj);
+          r[2] =             0; r[6] =             0; r[10] = -2/(lejos - cerca); r[14] = -(lejos + cerca)/(lejos - cerca);
+          r[3] =             0; r[7] =             0; r[11] =                  0; r[15] =                                1;
+        }
+
+        /* Proyección Perspectiva - glFrustum */
+        function frustum(r, izq, der, abj, arr, cerca, lejos) {
+          r[0] = 2*cerca/(der-izq); r[4] =                 0; r[ 8] =          (der+izq)/(der-izq); r[12] =                            0;
+          r[1] =                 0; r[5] = 2*cerca/(arr-abj); r[ 9] =          (arr+abj)/(arr-abj); r[13] =                            0;
+          r[2] =                 0; r[6] =                 0; r[10] = -(lejos+cerca)/(lejos-cerca); r[14] = -2*lejos*cerca/(lejos-cerca);
+          r[3] =                 0; r[7] =                 0; r[11] =                           -1; r[15] =                            0;
+        }
+
+        /* Proyección Perspectiva - gluPerspective */
+        function perspective(r, fovy, aspecto, cerca, lejos) {
+          var ang = fovy * 0.5;
+          var f = (Math.abs(Math.sin(toRadians(ang))) < 1e-8 ? 0 : 1) / Math.tan(toRadians(ang));
+          r[0] = f/aspecto; r[4] = 0; r[ 8] =                                  0; r[12] =                                       0;
+          r[1] =         0; r[5] = f; r[ 9] =                                  0; r[13] =                                       0;
+          r[2] =         0; r[6] = 0; r[10] = -(lejos + cerca) / (lejos - cerca); r[14] =  -2.0 * lejos * cerca / (lejos - cerca);
+          r[3] =         0; r[7] = 0; r[11] =                              - 1.0; r[15] =                                       0;
+        }
+
+        /* Multiplicación de matrices de 4 x 4 */
+        function multiplica(c, a, b) {
+          let r = new Array(16);
+          let i, j, k;
+          for (i = 0; i < 4; i++){
+            for (j = 0; j < 4; j++){
+              let s = 0;
+              for (k = 0; k < 4; k++)
+                s = s + a[i + k * 4] * b[k + j * 4];
+                r[i + j * 4] = s;
+              }
+            }
+          for (i = 0; i < 16; i++)
+            c[i] = r[i];
+        }
+
+        /***********************************************************************************/
+        /* Se define la geometría y se almacenan en los buffers de memoria y se renderiza. */
+        /***********************************************************************************/
+
+        class RectanguloGrafico {
+          constructor(gl) {
+            /**
+             *    3 ---------- 2
+             *     |        / |
+             *     |      /   |
+             *     |    /     |
+             *     | /        |
+             *    0 ---------- 1
+             */
+
+            /* Las coordenadas cartesianas (x, y) */
+            var vertices = [
+               0, 0, // 0
+               1, 0, // 1
+               1, 1, // 2
+               0, 1, // 3
+            ];
+
+
+            /* Se crea el objeto del arreglo de vértices (VAO) */
+            this.rectanguloVAO = gl.createVertexArray();
+
+            /* Se activa el objeto */
+            gl.bindVertexArray(this.rectanguloVAO);
+
+
+            /* Se genera un nombre (código) para el buffer */ 
+            var codigoVertices = gl.createBuffer();
+
+            /* Se asigna un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, codigoVertices);
+         
+            /* Se transfiere los datos desde la memoria nativa al buffer de la GPU */
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            /* Se habilita el arreglo de los vértices (indice = 0) */
+            gl.enableVertexAttribArray(0);
+
+            /* Se especifica los atributos del arreglo de vértices */
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+            /* Se deja de asignar un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+          }
+
+          dibuja(gl) {
+
+            /* Se activa el objeto del arreglo de vértices */
+            gl.bindVertexArray(this.rectanguloVAO);
+
+            /* Se renderiza las primitivas desde los datos del arreglo */
+            gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+          }
+        }
+
+        class Rectangulo {
+
+          // Métodos
+          constructor(x, y, ancho, alto) {
+            // Atributos
+            this.x = x;
+            this.y = y;
+            this.ancho = ancho;
+            this.alto = alto;
+          }
+        }
+        //circulos
+
+        class CirculoGrafico {
+          constructor(gl, radio) {
+
+            /**
+             *             3      2
+             *             
+             *       4                  1
+             *        	
+             *    5                         0
+             *    
+             *       6                  9
+             *        
+             *             7      8		
+             */
+
+            /* Las coordenadas cartesianas (x, y) */
+            var vertices = [];
+
+            /* Lee los vértices (x,y) y colores (r,g,b,a) */
+            for (var i = 0; i < 360; i++) {
+               vertices.push(radio * Math.cos(i * Math.PI / 180));
+               vertices.push(radio * Math.sin(i * Math.PI / 180));
+            }
+
+            /* Se crea el objeto del arreglo de vértices (VAO) */
+            this.circuloVAO = gl.createVertexArray();
+
+            /* Se activa el objeto */
+            gl.bindVertexArray(this.circuloVAO);
+
+
+            /* Se genera un nombre (código) para el buffer */ 
+            var codigoVertices = gl.createBuffer();
+
+            /* Se asigna un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, codigoVertices);
+         
+            /* Se transfiere los datos desde la memoria nativa al buffer de la GPU */
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            /* Se habilita el arreglo de los vértices (indice = 0) */
+            gl.enableVertexAttribArray(0);
+
+            /* Se especifica los atributos del arreglo de vértices */
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+            /* Se deja de asignar un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+          }
+
+          dibuja(gl) {
+
+            /* Se activa el objeto del arreglo de vértices */
+            gl.bindVertexArray(this.circuloVAO);
+
+            /* Se renderiza las primitivas desde los datos del arreglo */
+            gl.drawArrays(gl.TRIANGLE_FAN, 0, 360);
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+          }
+        }
+
+        class Circulo {
+          // Métodos
+          constructor(x, y, radio) {
+            // Atributos
+            this.x = x;
+            this.y = y;
+            this.radio = radio;
+          }
+        }
+
+        //Autos
+        class AutoGrafico1 {
+          constructor(gl) {
+
+            /* Las coordenadas cartesianas (x, y) */
+            var vertices = [
+              0.1, 0.28,  // A
+                1, 0.28,  // A
+                1, 0.56,  // A
+              0.1, 0.28,  // B
+                1, 0.56,  // B
+             0.09, 0.56,  // B
+             0.23, 0.56,  // C
+             0.83, 0.56,  // C
+              0.4, 0.78,  // C
+             0.83, 0.78,  // D
+             0.83, 0.56,  // D
+              0.4, 0.78,  // D
+            ];
+
+
+            /* Se crea el objeto del arreglo de vértices (VAO) */
+            this.trianguloVAO = gl.createVertexArray();
+
+            /* Se activa el objeto */
+            gl.bindVertexArray(this.trianguloVAO);
+
+
+            /* Se genera un nombre (código) para el buffer */ 
+            var codigoVertices = gl.createBuffer();
+
+            /* Se asigna un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, codigoVertices);
+         
+            /* Se transfiere los datos desde la memoria nativa al buffer de la GPU */
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            /* Se habilita el arreglo de los vértices (indice = 0) */
+            gl.enableVertexAttribArray(0);
+
+            /* Se especifica los atributos del arreglo de vértices */
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+            /* Se deja de asignar un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+          }
+
+          dibuja(gl) {
+
+            /* Se activa el objeto del arreglo de vértices */
+            gl.bindVertexArray(this.trianguloVAO);
+
+            /* Se renderiza las primitivas desde los datos del arreglo */
+            gl.drawArrays(gl.TRIANGLES, 0, 12);
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+          }
+        }
+
+        class Auto1 {
+          // Métodos
+          constructor(x, y, ancho, alto) {
+            // Atributos
+            this.x = x;
+            this.y = y;
+            this.ancho = ancho;
+            this.alto = alto;
+          }
+        }
+
+        class AutoGrafico2 {
+          constructor(gl) {
+
+            /* Las coordenadas cartesianas (x, y) */
+            var vertices = [
+              -0.1+1.1, 0.28,  // A
+              -  1+1.1, 0.28,  // A
+              -  1+1.1, 0.56,  // A
+             - 0.1+1.1, 0.28,  // B
+             -   1+1.1, 0.56,  // B
+             -0.09+1.1, 0.56,  // B
+             -0.23+1.1, 0.56,  // C
+             -0.83+1.1, 0.56,  // C
+             - 0.4+1.1, 0.78,  // C
+             -0.83+1.1, 0.78,  // D
+             -0.83+1.1, 0.56,  // D
+             - 0.4+1.1, 0.78,  // D
+            ];
+
+
+            /* Se crea el objeto del arreglo de vértices (VAO) */
+            this.trianguloVAO = gl.createVertexArray();
+
+            /* Se activa el objeto */
+            gl.bindVertexArray(this.trianguloVAO);
+
+
+            /* Se genera un nombre (código) para el buffer */ 
+            var codigoVertices = gl.createBuffer();
+
+            /* Se asigna un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, codigoVertices);
+         
+            /* Se transfiere los datos desde la memoria nativa al buffer de la GPU */
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            /* Se habilita el arreglo de los vértices (indice = 0) */
+            gl.enableVertexAttribArray(0);
+
+            /* Se especifica los atributos del arreglo de vértices */
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+            /* Se deja de asignar un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+          }
+
+          dibuja(gl) {
+
+            /* Se activa el objeto del arreglo de vértices */
+            gl.bindVertexArray(this.trianguloVAO);
+
+            /* Se renderiza las primitivas desde los datos del arreglo */
+            gl.drawArrays(gl.TRIANGLES, 0, 12);
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+          }
+        }
+
+        class Auto2 {
+          // Métodos
+          constructor(x, y, ancho, alto) {
+            // Atributos
+            this.x = x;
+            this.y = y;
+            this.ancho = ancho;
+            this.alto = alto;
+          }
+        }
+        class CaraGatoGrafico {
+          constructor(gl) {
+
+            /* Las coordenadas cartesianas (x, y) */
+            var vertices = [
+              0.3,0.6,
+              0.24,0.77,
+              0.39,0.77,
+              0.53,0.94,
+              0.53,0.43,
+              0.14,0.43, 
+              0.08,0.49,
+              0.08,0.83,  
+              0.13,0.95,  
+              0.24,0.77,         
+            ];
+
+
+            /* Se crea el objeto del arreglo de vértices (VAO) */
+            this.trianguloVAO = gl.createVertexArray();
+
+            /* Se activa el objeto */
+            gl.bindVertexArray(this.trianguloVAO);
+
+
+            /* Se genera un nombre (código) para el buffer */ 
+            var codigoVertices = gl.createBuffer();
+
+            /* Se asigna un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, codigoVertices);
+         
+            /* Se transfiere los datos desde la memoria nativa al buffer de la GPU */
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            /* Se habilita el arreglo de los vértices (indice = 0) */
+            gl.enableVertexAttribArray(0);
+
+            /* Se especifica los atributos del arreglo de vértices */
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+            /* Se deja de asignar un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+          }
+
+          dibuja(gl) {
+
+            /* Se activa el objeto del arreglo de vértices */
+            gl.bindVertexArray(this.trianguloVAO);
+
+            /* Se renderiza las primitivas desde los datos del arreglo */
+            gl.drawArrays(gl.TRIANGLE_FAN, 0, 10);
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+          }
+        }
+
+        class Caragato {
+          // Métodos
+          constructor(x, y, ancho, alto) {
+            // Atributos
+            this.x = x;
+            this.y = y;
+            this.ancho = ancho;
+            this.alto = alto;
+          }
+        }
+
+        class CuerpoGatoGrafico {
+          constructor(gl) {
+
+            /* Las coordenadas cartesianas (x, y) */
+            var vertices = [
+              0.45,0.22,
+              0.19,0.43,
+              0.53,0.43,
+              0.71,0.34,
+              0.71,0.04,
+              0.18,0.04,
+              0.19,0.43,       
+            ];
+
+
+            /* Se crea el objeto del arreglo de vértices (VAO) */
+            this.trianguloVAO = gl.createVertexArray();
+
+            /* Se activa el objeto */
+            gl.bindVertexArray(this.trianguloVAO);
+
+
+            /* Se genera un nombre (código) para el buffer */ 
+            var codigoVertices = gl.createBuffer();
+
+            /* Se asigna un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, codigoVertices);
+         
+            /* Se transfiere los datos desde la memoria nativa al buffer de la GPU */
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            /* Se habilita el arreglo de los vértices (indice = 0) */
+            gl.enableVertexAttribArray(0);
+
+            /* Se especifica los atributos del arreglo de vértices */
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+            /* Se deja de asignar un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+          }
+
+          dibuja(gl) {
+
+            /* Se activa el objeto del arreglo de vértices */
+            gl.bindVertexArray(this.trianguloVAO);
+
+            /* Se renderiza las primitivas desde los datos del arreglo */
+            gl.drawArrays(gl.TRIANGLE_FAN, 0, 7);
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+          }
+        }
+
+        class CuerpoGato {
+          // Métodos
+          constructor(x, y, ancho, alto) {
+            // Atributos
+            this.x = x;
+            this.y = y;
+            this.ancho = ancho;
+            this.alto = alto;
+          }
+        }
+
+        class ColaGatoGrafico {
+          constructor(gl) {
+
+            /* Las coordenadas cartesianas (x, y) */
+            var vertices = [
+              0.71,0.34,
+              0.71,0.21,
+              0.78,0.35,
+              0.83,0.21,
+              0.86,0.33,
+              0.93,0.32,
+              0.93,0.63,
+              0.80,0.74,
+              0.78,0.56,
+              0.70,0.66,
+              0.93,0.63,
+              0.78,0.56,
+              0.86,0.33,
+            ];
+
+
+            /* Se crea el objeto del arreglo de vértices (VAO) */
+            this.trianguloVAO = gl.createVertexArray();
+
+            /* Se activa el objeto */
+            gl.bindVertexArray(this.trianguloVAO);
+
+
+            /* Se genera un nombre (código) para el buffer */ 
+            var codigoVertices = gl.createBuffer();
+
+            /* Se asigna un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, codigoVertices);
+         
+            /* Se transfiere los datos desde la memoria nativa al buffer de la GPU */
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            /* Se habilita el arreglo de los vértices (indice = 0) */
+            gl.enableVertexAttribArray(0);
+
+            /* Se especifica los atributos del arreglo de vértices */
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+            /* Se deja de asignar un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+          }
+
+          dibuja(gl) {
+
+            /* Se activa el objeto del arreglo de vértices */
+            gl.bindVertexArray(this.trianguloVAO);
+
+            /* Se renderiza las primitivas desde los datos del arreglo */
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 13);
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+          }
+        }
+
+        class ColaGato {
+          // Métodos
+          constructor(x, y, ancho, alto) {
+            // Atributos
+            this.x = x;
+            this.y = y;
+            this.ancho = ancho;
+            this.alto = alto;
+          }
+        }
+        //ESCENA
+        class PistaGrafico {
+          constructor(gl) {
+            /**
+             *    3 ---------- 2
+             *     |        / |
+             *     |      /   |
+             *     |    /     |
+             *     | /        |
+             *    0 ---------- 1
+             */
+
+            /* Las coordenadas cartesianas (x, y) */
+            var vertices = [
+               6 , 0  , // F1
+              -6 , 0  , // F1
+              -6 , 0.5, // F1
+               6 , 0.5, // F1
+               6 , 0  , // F1
+              -6 , 0.5, // F1
+
+               6 , 0  +2, // F2
+              -6 , 0  +2, // F2
+              -6 , 0.5+2, // F2
+               6 , 0.5+2, // F2
+               6 , 0  +2, // F2
+              -6 , 0.5+2, // F2
+
+               6 , 0  +4, // F3
+              -6 , 0  +4, // F3
+              -6 , 0.5+4, // F3
+               6 , 0.5+4, // F3
+               6 , 0  +4, // F3
+              -6 , 0.5+4, // F3
+
+               6 , 0  +6, // F4
+              -6 , 0  +6, // F4
+              -6 , 0.5+6, // F4
+               6 , 0.5+6, // F4
+               6 , 0  +6, // F4
+              -6 , 0.5+6, // F4
+
+               6 , 0  +8, // F5
+              -6 , 0  +8, // F5
+              -6 , 0.5+8, // F5
+               6 , 0.5+8, // F5
+               6 , 0  +8, // F5
+              -6 , 0.5+8, // F5
+
+               6 , 0  +9, // F6
+              -6 , 0  +9, // F6
+              -6 , 0.5+9, // F6
+               6 , 0.5+9, // F6
+               6 , 0  +9, // F6
+              -6 , 0.5+9, // F6
+
+               6 , 0  +11, // F7
+              -6 , 0  +11, // F7
+              -6 , 0.5+11, // F7
+               6 , 0.5+11, // F7
+               6 , 0  +11, // F7
+              -6 , 0.5+11, // F7
+
+               6 , 0  +12, // F8
+              -6 , 0  +12, // F8
+              -6 , 0.5+12, // F8
+               6 , 0.5+12, // F8
+               6 , 0  +12, // F8
+              -6 , 0.5+12, // F8
+
+               6 , 0  +13, // F9
+              -6 , 0  +13, // F9
+              -6 , 0.5+13, // F9
+               6 , 0.5+13, // F9
+               6 , 0  +13, // F9
+              -6 , 0.5+13, // F9
+              
+            ];
+
+
+            /* Se crea el objeto del arreglo de vértices (VAO) */
+            this.rectanguloVAO = gl.createVertexArray();
+
+            /* Se activa el objeto */
+            gl.bindVertexArray(this.rectanguloVAO);
+
+
+            /* Se genera un nombre (código) para el buffer */ 
+            var codigoVertices = gl.createBuffer();
+
+            /* Se asigna un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, codigoVertices);
+         
+            /* Se transfiere los datos desde la memoria nativa al buffer de la GPU */
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+            /* Se habilita el arreglo de los vértices (indice = 0) */
+            gl.enableVertexAttribArray(0);
+
+            /* Se especifica los atributos del arreglo de vértices */
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+            /* Se deja de asignar un nombre (código) al buffer */
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+          }
+
+          dibuja(gl) {
+
+            /* Se activa el objeto del arreglo de vértices */
+            gl.bindVertexArray(this.rectanguloVAO);
+
+            /* Se renderiza las primitivas desde los datos del arreglo */
+            gl.drawArrays(gl.TRIANGLES, 0, 48);
+
+            /* Se desactiva el objeto del arreglo de vértices */
+            gl.bindVertexArray(null);
+
+          }
+        }
+
+        class Pista {
+
+          // Métodos
+          constructor(x, y, ancho, alto) {
+            // Atributos
+            this.x = x;
+            this.y = y;
+            this.ancho = ancho;
+            this.alto = alto;
+          }
+        }
+
+        /***************************************************************************/
+        /* Funciones que dibujan los circulos y los rectángulos                    */
+        /***************************************************************************/
+        //ESCENARIO
+        function dibujaPista(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, p.x, p.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 82/255, 82/255, 87/255, 1);
+          pista.dibuja(gl);
+        }
+
+        //PERSONAJE
+
+        function dibujaCirculo1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, c1.x, c1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 1, 1, opgato);
+          circulo1.dibuja(gl);
+        }
+        //FIGURA
+        function dibujaCaraGato(gl){
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, cg.x, cg.y, 0);
+          escalacion(MatrizModelo,0.75,0.75,0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 1, 191/255, 1);
+          caragato.dibuja(gl);
+        }
+        function dibujaCuerpoGato(gl){
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, cug.x, cug.y, 0);
+          escalacion(MatrizModelo,0.75,0.75,0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 1, 191/255, 1);
+          cuerpogato.dibuja(gl);
+        }
+        function dibujaColaGato(gl){
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, cog.x, cog.y, 0);
+          escalacion(MatrizModelo,0.75,0.75,0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 1, 191/255, 1);
+          colagato.dibuja(gl);
+        }
+
+        //FILA_1
+        //HITBOX
+        function dibujaRectangulo1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r1.x, r1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo1.dibuja(gl);
+        }
+        //FIGURA
+        //AUTO
+        function dibujaAuto1_iz(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a1_iz.x, a1_iz.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 1, 0, 1);
+          auto1_iz.dibuja(gl);
+        }
+        function dibujaAuto1_der(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a1_iz.x, a1_iz.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 1, 0, 1);
+          auto1_der.dibuja(gl);
+        }
+        function Ruedas1_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru1_1.x, ru1_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas1_1.dibuja(gl);
+        }
+        function Ruedas1_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru1_2.x, ru1_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas1_1.dibuja(gl);
+        }
+        //FILA_2
+        //HITBOX
+        function dibujaRectangulo2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r2.x, r2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo2.dibuja(gl);
+        }
+        function dibujaRectangulo3(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r3.x, r3.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo3.dibuja(gl);
+        }
+        function dibujaRectangulo4(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r4.x, r4.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo4.dibuja(gl);
+        }
+        function dibujaRectangulo5(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r5.x, r5.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo5.dibuja(gl);
+        }
+        function dibujaRectangulo6(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r6.x, r6.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo6.dibuja(gl);
+        }
+        //FIGURA
+        //AUTO
+        function dibujaAuto2_der(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a2_der.x, a2_der.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, 1);
+          auto2_der.dibuja(gl);
+        }
+        function dibujaAuto3_der(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a3_der.x, a3_der.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 61/255, 146/255, 200/255, 1);
+          auto3_der.dibuja(gl);
+        }
+        function dibujaAuto4_der(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a4_der.x, a4_der.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 1, 1, 1);
+          auto4_der.dibuja(gl);
+        }
+        function dibujaAuto5_der(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a5_der.x, a5_der.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 1, 1, 1);
+          auto5_der.dibuja(gl);
+        }
+        function dibujaAuto6_der(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a6_der.x, a6_der.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 1, 1);
+          auto6_der.dibuja(gl);
+        }
+        //RUEDAS
+        function Ruedas2_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru2_1.x, ru2_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas2_1.dibuja(gl);
+        }
+        function Ruedas3_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru3_1.x, ru3_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas3_1.dibuja(gl);
+        }
+        function Ruedas4_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru4_1.x, ru4_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas4_1.dibuja(gl);
+        }
+        function Ruedas5_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru5_1.x, ru5_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas5_1.dibuja(gl);
+        }
+        function Ruedas6_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru6_1.x, ru6_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas6_1.dibuja(gl);
+        }
+        function Ruedas2_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru2_2.x, ru2_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas2_2.dibuja(gl);
+        }
+        function Ruedas3_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru3_2.x, ru3_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas3_2.dibuja(gl);
+        }
+        function Ruedas4_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru4_2.x, ru4_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas4_2.dibuja(gl);
+        }
+        function Ruedas5_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru5_2.x, ru5_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas5_2.dibuja(gl);
+        }
+        function Ruedas6_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru6_2.x, ru6_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas6_2.dibuja(gl);
+        }
+        //FILA_3
+        //HITBOX
+        function dibujaRectangulo7(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r7.x, r7.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo7.dibuja(gl);
+        }
+        function dibujaRectangulo8(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r8.x, r8.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo8.dibuja(gl);
+        }
+        function dibujaRectangulo9(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r9.x, r9.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo9.dibuja(gl);
+        }
+        //FIGURA
+        //AUTO
+        function dibujaAuto7_iz(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a7_iz.x, a7_iz.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 96/255, 161/255, 206/255, 1);
+          auto7_iz.dibuja(gl);
+        }
+        function dibujaAuto8_iz(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a8_iz.x, a8_iz.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 129/255, 162/255, 184/255, 1);
+          auto8_iz.dibuja(gl);
+        }
+        function dibujaAuto9_iz(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a9_iz.x, a9_iz.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 179/255, 148/255, 213/255, 1);
+          auto9_iz.dibuja(gl);
+        }
+        //RUEDAS
+        function Ruedas7_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru7_1.x, ru7_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas7_1.dibuja(gl);
+        }
+        function Ruedas8_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru8_1.x, ru8_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas8_1.dibuja(gl);
+        }
+        function Ruedas9_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru9_1.x, ru9_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas9_1.dibuja(gl);
+        }
+        function Ruedas7_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru7_2.x, ru7_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas7_2.dibuja(gl);
+        }
+        function Ruedas8_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru8_2.x, ru8_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas8_2.dibuja(gl);
+        }
+        function Ruedas9_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru9_2.x, ru9_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas9_2.dibuja(gl);
+        }
+        //FILA_4
+        //HITBOX
+        function dibujaRectangulo10(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r10.x, r10.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo10.dibuja(gl);
+        }
+        function dibujaRectangulo11(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, r11.x, r11.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 1, 0, 0, ophitbox);
+          rectangulo11.dibuja(gl);
+        }
+        //FIGURA
+        //AUTO
+        function dibujaAuto10_iz(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a10_iz.x, a10_iz.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 224/255, 201/255, 53/255, 1);
+          auto10_iz.dibuja(gl);
+        }
+        function dibujaAuto11_iz(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, a11_iz.x, a11_iz.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 97/255, 188/255, 192/255, 1);
+          auto11_iz.dibuja(gl);
+        }
+        function Ruedas10_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru10_1.x, ru10_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas10_1.dibuja(gl);
+        }
+        function Ruedas11_1(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru11_1.x, ru11_1.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas11_1.dibuja(gl);
+        }
+        function Ruedas10_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru10_2.x, ru10_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas10_2.dibuja(gl);
+        }
+        function Ruedas11_2(gl) {
+          identidad(MatrizModelo);
+          traslacion(MatrizModelo, ru11_2.x, ru11_2.y, 0);
+          gl.uniformMatrix4fv(uMatrizModelo, false, MatrizModelo);
+          gl.uniform4f(uColor, 0, 0, 0, 1);
+          ruedas11_2.dibuja(gl);
+        }
+
+        /***************************************************************************/
+        /* Funciones que verifican las colisiones                                  */
+        /***************************************************************************/
+
+        function distancia2(x1, y1, x2, y2) {
+          return (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+        }
+
+        function verificarColision(c1, r) {
+          if (c1.y - c1.radio == r.y && c1.x + c1.radio  >= r.x && c1.x - c1.radio <= r.x + 1) {
+            location.reload();
+            alert('Perdiste');
+            //alert('Perdiste:' + seSobreponenCR2(c1,r));
+            c1.x = 0;
+            c1.y = -4.5;
+          }
+        }
+
+        function seSobreponenCR(c, r) {
+          var x01 = c.x;
+          var y02 = c.y;
+
+          if (c.x < r.x) {
+            x01 = r.x;
+          } else if (c.x > r.x + r.ancho) {
+            x01 = r.x + r.ancho;
+          }
+
+          if (c.y < r.y) {
+            y02 = r.y;
+          } else if (c.y > r.y + r.alto) {
+            y02 = r.y + r.alto;
+          }
+
+          var d2 = distancia2(c.x, c.y, x01, y02); 
+          return  d2 < c.radio * c.radio;
+        }
+
+        function seSobreponenCR2(c, r) {
+          var x01 = c.x+1;
+          var y02 = c.y;
+
+          if (c.x < r.x) {
+            x01 = r.x;
+          } else if (c.x > r.x + r.ancho) {
+            x01 = r.x + r.ancho;
+          }
+
+          if (c.y < r.y) {
+            y02 = r.y;
+          } else if (c.y > r.y + r.alto) {
+            y02 = r.y + r.alto;
+          }
+
+          var d2 = distancia2(c.x, c.y, x01, y02); 
+          return  d2
+        }
+
+        function Velocidad_Fila(rectangulo, auto, rueda1, rueda2, vel_x){
+          rectangulo.x=rectangulo.x+vel_x;   
+          auto.x=auto.x+vel_x; 
+          rueda1.x=rueda1.x+vel_x;    
+          rueda2.x=rueda2.x+vel_x;
+        }
+        function Volver_Fila(rectangulo, auto, ru1, ru2, nueva_posicion){
+          rectangulo.x= nueva_posicion;   
+          auto.x=rectangulo.x-0.05;  
+          ru1.x=rectangulo.x+0.25;    
+          ru2.x=rectangulo.x+0.75;
+        }
+        function Mover_autocompleto_Y(rectangulo, auto1, auto2, rueda1, rueda2, vel_y){
+          rectangulo.y=rectangulo.y+vel_y;
+          auto1.y=auto1.y+vel_y;
+          auto2.y=auto2.y+vel_y;
+          rueda1.y=rueda1.y+vel_y;
+          rueda2.y=rueda2.y+vel_y;
+        }
+        function Mover_auto_Y(rectangulo, auto, rueda1, rueda2, vel_y){
+          rectangulo.y=rectangulo.y+vel_y;
+          auto.y=auto.y+vel_y;
+          rueda1.y=rueda1.y+vel_y;
+          rueda2.y=rueda2.y+vel_y;
+        }
+        function Mover_auto_posY(rectangulo, auto, rueda1, rueda2, posX ,posY){
+          //auto2_der = new AutoGrafico2(gl);         a2_der = new Auto1(r2.x-0.05, r2.y, 2, 1);
+          //ruedas2_1 = new CirculoGrafico(gl, 0.15); ru2_1 = new Circulo(r2.x+0.25, r2.y+0.25, 0.15);
+          //ruedas2_2 = new CirculoGrafico(gl, 0.15); ru2_2 = new Circulo(r2.x+0.75, r2.y+0.25, 0.15);
+          rectangulo.y = posY;
+          rectangulo.x = posX;
+          auto.y = rectangulo.y;
+          auto.x = rectangulo.x - 0.05;
+          rueda1.y = rectangulo.y +0.25;
+          rueda1.x = rectangulo.x + 0.25;
+          rueda2.y = rectangulo.y +0.25;
+          rueda2.x = rectangulo.x + 0.75;
+        }
+        
+        /***************************************************************************/
+        /* Se renderizan todos los objetos                                         */
+        /***************************************************************************/
+        
+        function dibuja() {
+
+          gl.clear(gl.COLOR_BUFFER_BIT);
+
+          //Habilitando transparencia
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+          //ESCENARIO
+          dibujaPista(gl);
+          
+          //Dibuja personaje
+          dibujaCirculo1(gl);
+          dibujaCaraGato(gl);
+          dibujaCuerpoGato(gl);
+          dibujaColaGato(gl);
+          //DIBUJA FILA 1
+          //IZQUIERDA - DERECHA
+          dibujaRectangulo1(gl);
+          if(sw>0){
+            dibujaAuto1_iz(gl);//IZQUIERDA
+          }else{
+            dibujaAuto1_der(gl);//DERECHA
+          }
+          Ruedas1_1(gl);Ruedas1_2(gl);
+
+          //DIBUJA FILA 2
+          dibujaRectangulo2(gl);
+          dibujaRectangulo3(gl);
+          dibujaRectangulo4(gl);
+          dibujaRectangulo5(gl);
+          dibujaRectangulo6(gl);
+          
+          dibujaAuto2_der(gl);
+          dibujaAuto3_der(gl);
+          dibujaAuto4_der(gl);
+          dibujaAuto5_der(gl);
+          dibujaAuto6_der(gl);
+
+          Ruedas2_1(gl);Ruedas2_2(gl);
+          Ruedas3_1(gl);Ruedas3_2(gl);
+          Ruedas4_1(gl);Ruedas4_2(gl);
+          Ruedas5_1(gl);Ruedas5_2(gl);
+          Ruedas6_1(gl);Ruedas6_2(gl);
+
+          //DIBUJA FILA 3
+          dibujaRectangulo7(gl);
+          dibujaRectangulo8(gl);
+          dibujaRectangulo9(gl);
+
+          dibujaAuto7_iz(gl);
+          dibujaAuto8_iz(gl);
+          dibujaAuto9_iz(gl);
+
+          Ruedas7_1(gl);Ruedas7_2(gl);
+          Ruedas8_1(gl);Ruedas8_2(gl);
+          Ruedas9_1(gl);Ruedas9_2(gl);
+
+          //DIBUJA FILA 4
+          dibujaRectangulo10(gl);
+          dibujaRectangulo11(gl);
+
+          dibujaAuto10_iz(gl);
+          dibujaAuto11_iz(gl);
+
+          Ruedas10_1(gl);Ruedas10_2(gl);
+          Ruedas11_1(gl);Ruedas11_2(gl);
+
+          //EN FILA1-Cuadrado moviendose de izquierda a derecha
+          r1.x=r1.x+vel_x_fila1;  a1_iz.x=a1_iz.x+vel_x_fila1;    ru1_1.x=ru1_1.x+vel_x_fila1;    ru1_2.x=ru1_2.x+vel_x_fila1;
+          if(r1.x<=-5 ||r1.x>=4){
+            vel_x_fila1=-vel_x_fila1;
+            sw=-sw;
+            //console.log('Cuadrado posx = ',r1.x, ' posy = ', r1.y);
+          }
+
+          //EN FILA2-Cuadrados Moviendose en un solo sentido
+          Velocidad_Fila(r2,a2_der,ru2_1,ru2_2,vel_x_fila2);
+          Velocidad_Fila(r3,a3_der,ru3_1,ru3_2,vel_x_fila2);
+          Velocidad_Fila(r4,a4_der,ru4_1,ru4_2,vel_x_fila2);
+          Velocidad_Fila(r5,a5_der,ru5_1,ru5_2,vel_x_fila2);
+          Velocidad_Fila(r6,a6_der,ru6_1,ru6_2,vel_x_fila2);
+          if(r2.x>6){Volver_Fila(r2,a2_der,ru2_1,ru2_2,-6.5);}
+          if(r3.x>6){Volver_Fila(r3,a3_der,ru3_1,ru3_2,-6.5);}
+          if(r4.x>6){Volver_Fila(r4,a4_der,ru4_1,ru4_2,-6.5);}
+          if(r5.x>6){Volver_Fila(r5,a5_der,ru5_1,ru5_2,-6.5);}
+          if(r6.x>6){Volver_Fila(r6,a6_der,ru6_1,ru6_2,-6.5);}
+          //EN FILA3-Cuadrados Moviendose en un solo sentido
+          Velocidad_Fila(r7,a7_iz,ru7_1,ru7_2,vel_x_fila3);
+          Velocidad_Fila(r8,a8_iz,ru8_1,ru8_2,vel_x_fila3);
+          Velocidad_Fila(r9,a9_iz,ru9_1,ru9_2,vel_x_fila3);
+          if(r7.x<-6){Volver_Fila(r7,a7_iz,ru7_1,ru7_2,6.5);}
+          if(r8.x<-6){Volver_Fila(r8,a8_iz,ru8_1,ru8_2,6.5);}
+          if(r9.x<-6){Volver_Fila(r9,a9_iz,ru9_1,ru9_2,6.5);}
+          //EN FILA4-Cuadrados Moviendose en un solo sentido
+          Velocidad_Fila(r10,a10_iz,ru10_1,ru10_2,vel_x_fila4);
+          Velocidad_Fila(r11,a11_iz,ru11_1,ru11_2,vel_x_fila4);
+          if(r10.x<-6){Volver_Fila(r10,a10_iz,ru10_1,ru10_2,6.5);}
+          if(r11.x<-6){Volver_Fila(r11,a11_iz,ru11_1,ru11_2,6.5);}
+          
+          //Choque de la primera fila
+          verificarColision(c1,r1);
+          //Choque de la segunda fila
+          verificarColision(c1,r2);
+          verificarColision(c1,r3);
+          verificarColision(c1,r4);
+          verificarColision(c1,r5);
+          verificarColision(c1,r6);
+          //Choque de la tercera fila
+          verificarColision(c1,r7);
+          verificarColision(c1,r8);
+          verificarColision(c1,r9);
+          //Choque de la cuarta fila
+          verificarColision(c1,r10);
+          verificarColision(c1,r11);
+
+          ////MOVIENDO ESCENARIO 1
+          let posx =0;
+          let posy =0;
+          if(c1.y==4.5){mov_1=1;  posx=c1.x;  posy=c1.y;
+            console.log('x: '+posx+' y: '+posy);
+          }
+          if(mov_1==1){
+            //console.log('y:'+c1.y);
+            c1.y = c1.y - 0.2;
+            cg.y = cg.y - 0.2;
+            cug.y = cug.y- 0.2;
+            cog.y = cog.y- 0.2;
+            p.y = p.y-0.2;
+            Mover_autocompleto_Y(r1, a1_der, a1_iz, ru1_1, ru1_2, -0.2);
+            Mover_auto_Y(r2 , a2_der, ru2_1 , ru2_2 , -0.2);
+            Mover_auto_Y(r3 , a3_der, ru3_1 , ru3_2 , -0.2);
+            Mover_auto_Y(r4 , a4_der, ru4_1 , ru4_2 , -0.2);
+            Mover_auto_Y(r5 , a5_der, ru5_1 , ru5_2 , -0.2);
+            Mover_auto_Y(r6 , a6_der, ru6_1 , ru6_2 , -0.2);
+            Mover_auto_Y(r7 , a7_iz , ru7_1 , ru7_2 , -0.2);
+            Mover_auto_Y(r8 , a8_iz , ru8_1 , ru8_2 , -0.2);
+            Mover_auto_Y(r9 , a9_iz , ru9_1 , ru9_2 , -0.2);
+            Mover_auto_Y(r10, a10_iz, ru10_1, ru10_2, -0.2);
+            Mover_auto_Y(r11, a11_iz, ru11_1, ru11_2, -0.2);
+            if(r1.y<=-6){
+              console.log('NIVEL '+nivel+' superado');
+              nivel++;
+              console.log('NIVEL '+nivel);
+              mov_1=0;
+              //r2.y = c1.y+0.5;
+              Mover_auto_posY(r2,a2_der,ru2_1,ru2_2, -6,c1.y+0.5);
+              Mover_auto_posY(r3,a3_der,ru3_1,ru3_2, -7.2,c1.y+0.5);
+              Mover_auto_posY(r4,a4_der,ru4_1,ru4_2, -8.4,c1.y+0.5);
+              Mover_auto_posY(r5,a5_der,ru5_1,ru5_2, -9.6,c1.y+4.5);
+              Mover_auto_posY(r6,a6_der,ru6_1,ru6_2, -10.8,c1.y+4.5);
+              vel_x_fila2 = 0.15;
+              Mover_auto_posY(r7,a7_iz,ru7_1,ru7_2, 6  ,c1.y+1.5);
+              Mover_auto_posY(r8,a8_iz,ru8_1,ru8_2, 7.2,c1.y+1.5);
+              Mover_auto_posY(r9,a9_iz,ru9_1,ru9_2, 8.4,c1.y+1.5);
+              vel_x_fila3 = -0.10;  
+              Mover_auto_posY(r10,a10_iz,ru10_1,ru10_2, r10.x ,c1.y+3.5);
+              Mover_auto_posY(r11,a11_iz,ru11_1,ru11_2, r11.x ,c1.y+3.5);
+              vel_x_fila4 = -0.15;             
+            }
+          }
+
+
+          if(c1.y>1.5 && nivel==2){
+            location.reload();
+            alert('GANASTE');
+            //alert('Perdiste:' + seSobreponenCR2(c1,r));
+            c1.x = 0;
+            c1.y = -4.5;
+          }
+
+          requestAnimationFrame(dibuja);
+        }
+
+        function main() {
+          /* Paso 1: Se prepara el lienzo y se obtiene el contexto del WebGL.        */
+          canvas = document.getElementById("webglcanvas");
+          gl = canvas.getContext("webgl2");
+          gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+          //Movimiento esto hace que un objeto se mueva
+          document.addEventListener("keydown", function(event) {
+          // Velocidad de movimiento (puedes ajustarla según convenga)
+          var delta = 1;   
+          var omega = 0.2; 
+          // Se actualizan las coordenadas del círculo c1 según la tecla presionada
+          switch (event.key) {
+              case "ArrowUp":    // Mover hacia arriba (incrementar y)
+                  c1.y += delta;
+                  cg.y += delta;
+                  cug.y += delta;
+                  cog.y += delta;
+                  //console.log('PERSONAJE Y: '+c1.y);
+                  break;
+              case "ArrowDown":  // Mover hacia abajo (disminuir y)
+                  c1.y -= delta;
+                  cg.y -= delta;
+                  cug.y -= delta;
+                  cog.y -= delta;
+                  //console.log('PERSONAJE Y: '+c1.y);
+                  break;
+              case "ArrowLeft":  // Mover hacia izquierda (disminuir x)
+                  c1.x -= omega;
+                  cg.x -= omega;
+                  cug.x -= omega;
+                  cog.x -= omega;
+                  //console.log('PERSONAJE Y: '+c1.y);
+                  break;
+              case "ArrowRight": // Mover hacia derecha (incrementar x)
+                  c1.x += omega;
+                  cg.x += omega;
+                  cug.x += omega;
+                  cog.x += omega;
+                  //console.log('PERSONAJE Y: '+c1.y);
+                  break;
+              }
+          });          
+
+          /* Paso 2: Se crean, compilan y enlazan los programas Shader               */
+          compilaEnlazaLosShaders();
+
+          /* Paso 3: Se define la geometría y se almacenan en los buffers de memoria.*/
+          //ENTORNO o ESCENARIO
+          pista = new PistaGrafico(gl);
+          p = new Pista(0,-3,2,1);
+
+          //PERSONAJE
+          //HITBOX
+          circulo1 = new CirculoGrafico(gl, 0.5);
+          c1 = new Circulo(0, -4.5, 0.5);
+          //DIBUJO
+          //CARA
+          caragato = new CaraGatoGrafico(gl);
+          cg = new Caragato(c1.x-0.35,c1.y-0.5,2,1);
+          cuerpogato = new CuerpoGatoGrafico(gl);
+          cug = new CuerpoGato(c1.x-0.35,c1.y-0.5,2,1);
+          colagato = new ColaGatoGrafico(gl);
+          cog = new ColaGato(c1.x-0.35,c1.y-0.5,2,1);
+
+          //FILA_1
+          //HITBOX
+          rectangulo1 = new RectanguloGrafico(gl);  r1 = new Rectangulo(4, 3, 2, 1);
+          //DIBUJO
+          auto1_iz = new AutoGrafico1(gl);
+          a1_iz = new Auto1(r1.x-0.05, r1.y, 2, 1);
+          auto1_der = new AutoGrafico2(gl);
+          a1_der = new Auto2(r1.x-0.05, r1.y, 2, 1);
+          ruedas1_1 = new CirculoGrafico(gl, 0.15);
+          ru1_1 = new Circulo(r1.x+0.25, r1.y+0.25, 0.15);
+          ruedas1_2 = new CirculoGrafico(gl, 0.15);
+          ru1_2 = new Circulo(r1.x+0.75, r1.y+0.25, 0.15);
+
+          //FILA_2
+          //HITBOX
+          rectangulo2 = new RectanguloGrafico(gl);  r2 = new Rectangulo(-4,1,2,1);
+          rectangulo3 = new RectanguloGrafico(gl);  r3 = new Rectangulo(r2.x+3,r2.y,2,1);
+          rectangulo4 = new RectanguloGrafico(gl);  r4 = new Rectangulo(r3.x+1.5,r2.y,2,1);
+          rectangulo5 = new RectanguloGrafico(gl);  r5 = new Rectangulo(r4.x+1.5,r2.y,2,1);
+          rectangulo6 = new RectanguloGrafico(gl);  r6 = new Rectangulo(r5.x+3,r2.y,2,1);
+          //DIBUJO
+          auto2_der = new AutoGrafico2(gl);         a2_der = new Auto1(r2.x-0.05, r2.y, 2, 1);
+          auto3_der = new AutoGrafico2(gl);         a3_der = new Auto1(r3.x-0.05, r3.y, 2, 1);
+          auto4_der = new AutoGrafico2(gl);         a4_der = new Auto1(r4.x-0.05, r4.y, 2, 1);
+          auto5_der = new AutoGrafico2(gl);         a5_der = new Auto1(r5.x-0.05, r5.y, 2, 1);
+          auto6_der = new AutoGrafico2(gl);         a6_der = new Auto1(r6.x-0.05, r6.y, 2, 1);
+          ruedas2_1 = new CirculoGrafico(gl, 0.15); ru2_1 = new Circulo(r2.x+0.25, r2.y+0.25, 0.15);
+          ruedas3_1 = new CirculoGrafico(gl, 0.15); ru3_1 = new Circulo(r3.x+0.25, r3.y+0.25, 0.15);
+          ruedas4_1 = new CirculoGrafico(gl, 0.15); ru4_1 = new Circulo(r4.x+0.25, r4.y+0.25, 0.15);
+          ruedas5_1 = new CirculoGrafico(gl, 0.15); ru5_1 = new Circulo(r5.x+0.25, r5.y+0.25, 0.15);
+          ruedas6_1 = new CirculoGrafico(gl, 0.15); ru6_1 = new Circulo(r6.x+0.25, r6.y+0.25, 0.15);
+          ruedas2_2 = new CirculoGrafico(gl, 0.15); ru2_2 = new Circulo(r2.x+0.75, r2.y+0.25, 0.15);
+          ruedas3_2 = new CirculoGrafico(gl, 0.15); ru3_2 = new Circulo(r3.x+0.75, r3.y+0.25, 0.15);
+          ruedas4_2 = new CirculoGrafico(gl, 0.15); ru4_2 = new Circulo(r4.x+0.75, r4.y+0.25, 0.15);
+          ruedas5_2 = new CirculoGrafico(gl, 0.15); ru5_2 = new Circulo(r5.x+0.75, r5.y+0.25, 0.15);
+          ruedas6_2 = new CirculoGrafico(gl, 0.15); ru6_2 = new Circulo(r6.x+0.75, r6.y+0.25, 0.15);
+          //FILA_3
+          //HITBOX
+          rectangulo7 = new RectanguloGrafico(gl);  r7 = new Rectangulo(-4,-1,2,1);
+          rectangulo8 = new RectanguloGrafico(gl);  r8 = new Rectangulo(r7.x+2,r7.y,2,1);
+          rectangulo9 = new RectanguloGrafico(gl);  r9 = new Rectangulo(r8.x+3,r7.y,2,1);
+          //DIBUJO
+          auto7_iz = new AutoGrafico1(gl);          a7_iz = new Auto1(r7.x-0.05, r7.y, 2, 1);
+          auto8_iz = new AutoGrafico1(gl);          a8_iz = new Auto1(r8.x-0.05, r8.y, 2, 1);
+          auto9_iz = new AutoGrafico1(gl);          a9_iz = new Auto1(r9.x-0.05, r9.y, 2, 1);
+          ruedas7_1 = new CirculoGrafico(gl, 0.15); ru7_1 = new Circulo(r7.x+0.25, r7.y+0.25, 0.15);
+          ruedas8_1 = new CirculoGrafico(gl, 0.15); ru8_1 = new Circulo(r8.x+0.25, r8.y+0.25, 0.15);
+          ruedas9_1 = new CirculoGrafico(gl, 0.15); ru9_1 = new Circulo(r9.x+0.25, r9.y+0.25, 0.15);
+          ruedas7_2 = new CirculoGrafico(gl, 0.15); ru7_2 = new Circulo(r7.x+0.75, r7.y+0.25, 0.15);
+          ruedas8_2 = new CirculoGrafico(gl, 0.15); ru8_2 = new Circulo(r8.x+0.75, r8.y+0.25, 0.15);
+          ruedas9_2 = new CirculoGrafico(gl, 0.15); ru9_2 = new Circulo(r9.x+0.75, r9.y+0.25, 0.15);
+
+
+          //FILA_4
+          rectangulo10 = new RectanguloGrafico(gl); r10 = new Rectangulo(4.5,-3,2,1);
+          rectangulo11 = new RectanguloGrafico(gl); r11 = new Rectangulo(r10.x+5,r10.y,2,1);
+          //DIBUJO
+          auto10_iz = new AutoGrafico1(gl);         a10_iz = new Auto1(r10.x-0.05, r10.y, 2, 1);
+          auto11_iz = new AutoGrafico1(gl);         a11_iz = new Auto1(r11.x-0.05, r11.y, 2, 1);
+          ruedas10_1 = new CirculoGrafico(gl, 0.15); ru10_1 = new Circulo(r10.x+0.25, r10.y+0.25, 0.15);
+          ruedas11_1 = new CirculoGrafico(gl, 0.15); ru11_1 = new Circulo(r11.x+0.25, r11.y+0.25, 0.15);
+          ruedas10_2 = new CirculoGrafico(gl, 0.15); ru10_2 = new Circulo(r10.x+0.75, r10.y+0.25, 0.15);
+          ruedas11_2 = new CirculoGrafico(gl, 0.15); ru11_2 = new Circulo(r11.x+0.75, r11.y+0.25, 0.15);
+
+          /* Paso 4: Se obtiene los ID de las variables de entrada de los shaders    */
+          gl.useProgram(programaID);
+          uColor = gl.getUniformLocation(programaID, "uColor");
+          uMatrizProyeccion = gl.getUniformLocation(programaID, "uMatrizProyeccion");
+          uMatrizVista = gl.getUniformLocation(programaID, "uMatrizVista");
+          uMatrizModelo = gl.getUniformLocation(programaID, "uMatrizModelo");
+
+          /* Paso 5: Se define la proyección                                        */
+          ortho(MatrizProyeccion, -5, 5, -5, 5, -5, 5);
+          //ortho(MatrizProyeccion, -6, 6, -10, 10, -5, 5);
+          gl.uniformMatrix4fv(uMatrizProyeccion, false, MatrizProyeccion);
+
+          /* Paso 6: Se renderizan los objetos                                       */
+          gl.clearColor(53/255, 104/255, 45/255, 1.0);
+          identidad(MatrizVista);
+          gl.uniformMatrix4fv(uMatrizVista, false, MatrizVista);
+          dibuja();          
+        }
+
+        /* Llama a main una vez que la página web se haya cargado. */
+        window.onload = main;
+
+      </script>
+   </body>
+</html>
